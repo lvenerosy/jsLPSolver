@@ -20,14 +20,24 @@ Tableau.prototype.countIntegerValues = function(){
 //-------------------------------------------------------------------
 Tableau.prototype.isIntegral = function () {
     var integerVariables = this.model.integerVariables;
+    // console.log("integerVariables", JSON.stringify(integerVariables));
+    // console.log("rowByVarIndex", JSON.stringify(this.rowByVarIndex));
+    // var tmp = "";
+    // for (var i = 0; i < this.matrix.length; i++) {
+    //     tmp += this.matrix[i][0] + " ";
+    // }
+    // console.log(tmp);
     var nIntegerVars = integerVariables.length;
     for (var v = 0; v < nIntegerVars; v++) {
+        // console.log("WA");
         var varRow = this.rowByVarIndex[integerVariables[v].index];
         if (varRow === -1) {
             continue;
         }
+        // console.log("ZA");
 
         var varValue = this.matrix[varRow][this.rhsColumn];
+        // console.log("varValue", varValue);
         if (Math.abs(varValue - Math.round(varValue)) > this.precision) {
             return false;
         }

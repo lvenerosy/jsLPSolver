@@ -58,6 +58,11 @@ function Tableau(precision) {
     this.unboundedVarIndex = null;
 
     this.branchAndCutIterations = 0;
+
+    // this.basis = null;
+
+    // get rid of it (in simplex)
+    this.tmpIter = 0;
 }
 module.exports = Tableau;
 
@@ -132,6 +137,18 @@ Tableau.prototype.initialize = function (width, height, variables, unrestrictedV
     this.colByVarIndex = new Array(this.nVars);
 
     this.lastElementIndex = this.nVars;
+
+    // // BUILD THE BASIS
+    // tmpRow = new Array(height - 1);
+    // for (i = 0; i < height - 1; i++) {
+    //     tmpRow[i] = 0;
+    // }
+    //
+    // this.basis = new Array(height - 1);
+    // for (j = 0; j < height - 1; j++) {
+    //     this.basis[j] = tmpRow.slice();
+    //     this.basis[j][j] = 1;
+    // }
 };
 
 Tableau.prototype._resetMatrix = function () {

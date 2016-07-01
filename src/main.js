@@ -43,7 +43,7 @@ var Solver = function () {
     /*************************************************************
      * Method: Solve
      * Scope: Public:
-     * Agruments:
+     * Arguments:
      *        model: The model we want solver to operate on
      *        precision: If we're solving a MILP, how tight
      *                   do we want to define an integer, given
@@ -53,8 +53,11 @@ var Solver = function () {
      *        validate: if left blank, it will get ignored; otherwise
      *                  it will run the model through all validation
      *                  functions in the *Validate* module
+     *        activateMIRCuts: set to true to activate the MIR cuts
+     *        debug: set to true to enable cycle detection
      **************************************************************/
-    this.Solve = function (model, precision, full, validate) {
+    this.Solve = function (model, precision, full, validate, activateMIRCuts, debug) {
+    // this.Solve = function (model, precision, full, validate) {
         // Run our validations on the model
         // if the model doesn't have a validate
         // attribute set to false
@@ -72,6 +75,9 @@ var Solver = function () {
         if (model instanceof Model === false) {
             model = new Model(precision).loadJson(model);
         }
+
+        model.activateMIRCuts(activateMIRCuts);
+        model.debug(debug);
 
         var solution = model.solve();
         this.lastSolvedModel = model;

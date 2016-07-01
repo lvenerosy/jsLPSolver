@@ -6,6 +6,7 @@
 /*global process*/
 
 var Tableau = require("./Tableau.js");
+var LU = require("./LUDecomposition.js");
 
 //-------------------------------------------------------------------
 // Function: solve
@@ -16,14 +17,26 @@ Tableau.prototype.simplex = function () {
     this.bounded = true;
 
     // Execute Phase 1 to obtain a Basic Feasible Solution (BFS)
+    // console.log("new phase 1");
+    // console.log("phase 1");
     this.phase1();
 
     // Execute Phase 2
     if (this.feasible === true) {
+        this.tmpIter++;
+        // console.log("new phase 2");
         // Running simplex on Initial Basic Feasible Solution (BFS)
         // N.B current solution is feasible
+        // console.log("iterations", this.branchAndCutIterations);
+        // if(this.branchAndCutIterations === 0)
         this.phase2();
+        // else
+        // this.LUSimplexPhase2();
+        // if(this.tmpIter === 2)
+        //     throw new Error();
     }
+
+    // console.log("SUCCESS");
 
     return this;
 };
@@ -63,6 +76,16 @@ Tableau.prototype.phase1 = function () {
                 leavingRowIndex = r;
             }
         }
+
+        // console.log("matrix");
+        // for(var i = 0; i < this.matrix.length; i++){
+        //     var tmpstr = "";
+        //     for(var j = 0; j < this.matrix[0].length; j++){
+        //         tmpstr += this.matrix[i][j].toFixed(2) + "\t";
+        //     }
+        //     console.log(tmpstr);
+        // }
+        // console.log("\n");
 
         // If nothing is strictly smaller than 0; we're done with phase 1.
         if (leavingRowIndex === 0) {
@@ -136,6 +159,15 @@ Tableau.prototype.phase2 = function () {
     var iterations = 0;
     var reducedCost, unrestricted;
     while (true) {
+        // for(var loop1 = 0; loop1 < matrix.length; loop1++){
+        //     var str = "";
+        //     for(var loop2 = 0; loop2 < matrix[0].length; loop2++){
+        //         str += matrix[loop1][loop2].toFixed(2) + " ";
+        //     }
+        //     console.log(str);
+        // }
+        // console.log("\n");
+
         var costRow = matrix[this.costRowIndex];
 
         // Selecting entering variable (optimality condition)
@@ -288,8 +320,16 @@ Tableau.prototype.pivot = function (pivotRowIndex, pivotColumnIndex) {
     var lastRow = this.height - 1;
     var lastColumn = this.width - 1;
 
+    // console.log("//////////////////////////////////");
+    //
+    // console.log("leavingRow", pivotRowIndex);
+    // console.log("enteringColumn", pivotColumnIndex);
+
     var leavingBasicIndex = this.varIndexByRow[pivotRowIndex];
     var enteringBasicIndex = this.varIndexByCol[pivotColumnIndex];
+
+    // console.log("leavingBasicIndex", leavingBasicIndex);
+    // console.log("enteringBasicIndex", enteringBasicIndex);
 
     this.varIndexByRow[pivotRowIndex] = enteringBasicIndex;
     this.varIndexByCol[pivotColumnIndex] = leavingBasicIndex;
@@ -299,6 +339,8 @@ Tableau.prototype.pivot = function (pivotRowIndex, pivotColumnIndex) {
 
     this.colByVarIndex[enteringBasicIndex] = -1;
     this.colByVarIndex[leavingBasicIndex] = pivotColumnIndex;
+
+    // console.log("//////////////////////////////////");
 
     // Divide everything in the target row by the element @
     // the target column

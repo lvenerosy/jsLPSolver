@@ -41,6 +41,15 @@ Tableau.prototype.copy = function () {
 
     copy.matrix = matrixCopy;
 
+
+    // var basis = this.basis;
+    // var basisCopy = new Array(this.height - 1);
+    // for (r = 0; r < this.height - 1; r++) {
+    //     basisCopy[r] = basis[r].slice();
+    // }
+    //
+    // copy.basis = basisCopy;
+
     return copy;
 };
 
@@ -55,6 +64,7 @@ Tableau.prototype.restore = function () {
 
     var save = this.savedState;
     var savedMatrix = save.matrix;
+    var savedBasis = save.basis;
     this.nVars = save.nVars;
     this.model = save.model;
 
@@ -76,6 +86,15 @@ Tableau.prototype.restore = function () {
             row[c] = savedRow[c];
         }
     }
+
+    // // Restoring basis
+    // for (r = 0; r < this.height - 1; r += 1) {
+    //     var savedRow = savedBasis[r];
+    //     var row = this.basis[r];
+    //     for (c = 0; c < this.height - 1; c += 1) {
+    //         row[c] = savedRow[c];
+    //     }
+    // }
 
     // Restoring all the other structures
     var savedBasicIndexes = save.varIndexByRow;

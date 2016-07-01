@@ -64,7 +64,7 @@ Tableau.prototype.applyCuts = function (branchingCuts){
 //-------------------------------------------------------------------
 Tableau.prototype.branchAndCut = function () {
     var branches = [];
-    var iterations = 0;
+    // this.branchAndCutIterations = 0;
 
     // This is the default result
     // If nothing is both *integral* and *feasible*
@@ -94,9 +94,14 @@ Tableau.prototype.branchAndCut = function () {
 
         // Adding cut constraints
         var cuts = branch.cuts;
+        // console.log("CUTS");
+        // for(var loop = 0; loop < cuts.length; loop){
+        //     console.log(cuts[loop].type, " ", cuts[loop].value);
+        // }
+        // console.log("\n");
         this.applyCuts(cuts);
 
-        iterations++;
+        this.branchAndCutIterations++;
         if (this.feasible === false) {
             continue;
         }
@@ -126,8 +131,7 @@ Tableau.prototype.branchAndCut = function () {
 
         // Is the model both integral and feasible?
         if (this.isIntegral() === true) {
-            if (iterations === 1) {
-                this.branchAndCutIterations = iterations;
+            if (this.branchAndCutIterations === 1) {
                 return;
             }
             // Store the solution as the bestSolution
@@ -137,7 +141,7 @@ Tableau.prototype.branchAndCut = function () {
                 bestOptionalObjectivesEvaluations[oCopy] = this.optionalObjectives[oCopy].reducedCosts[0];
             }
         } else {
-            if (iterations === 1) {
+            if (this.branchAndCutIterations === 1) {
                 // Saving the first iteration
                 // TODO: implement a better strategy for saving the tableau?
                 this.save();
@@ -226,5 +230,4 @@ Tableau.prototype.branchAndCut = function () {
         // The model is feasible
         this.applyCuts(bestBranch.cuts);
     }
-    this.branchAndCutIterations = iterations;
 };

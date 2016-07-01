@@ -2,6 +2,7 @@
 /*global require*/
 /*global it*/
 /*global console*/
+/*global process*/
 
 var assert = require("assert");
 var walk = require("walk");
@@ -88,6 +89,7 @@ function assertSolution(model, solutionA, solutionB) {
 // Build out our test suite
 describe("The Solve method takes a problem and solves it",
     function () {
+        var iter = 0;
         var solver = require("../src/solver");
         // Iterate over each problem in the suite
         problems.forEach(function (jsonModel) {
@@ -103,11 +105,14 @@ describe("The Solve method takes a problem and solves it",
                         delete jsonModel.expects._timeout;
                     }
 
-
+                    iter++;
                     // Each problem has its correct answer attached to its
                     // JSON as an "expects" object
+                    var date_0 = process.hrtime();
                     var expectedResult = jsonModel.expects,
                         obtainedResult = solver.Solve(jsonModel);
+                    var a = process.hrtime(date_0);
+                    console.log(a[0] + a[1] / 1e9);
 
                     var model = solver.lastSolvedModel;
 
