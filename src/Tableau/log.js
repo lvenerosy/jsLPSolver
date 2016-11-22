@@ -168,3 +168,62 @@ Tableau.prototype.log = function (message, force) {
 
     return this;
 };
+
+Tableau.prototype.displayTableau = function () {
+    var decNum = 4;
+    var height = this.height;
+    var width = this.width;
+    var matrix = this.matrix;
+    var basis = this.basis;
+    var basisCosts = this.basisCosts;
+    var i, j;
+    var str = "z\t";
+    console.log("##### full tableau #####");
+
+    for (i = 1; i < width; i++) {
+        str += "x" + this.varIndexByCol[i] + "\t";
+    }
+    str += "||\t";
+    for (i = 1; i < height; i++) {
+        str += "x" + this.varIndexByRow[i] + "\t";
+    }
+    console.log(str);
+    for (i = 0; i < height; i++) {
+        str = "";
+        for (j = 0; j < width; j++) {
+            str += matrix[i][j].toFixed(decNum) + "\t";
+        }
+        if (i === 0 && this.model.useRevisedSimplex) {
+            str += "||\t";
+            for (j = 0; j < this.height - 1; j++) {
+                str += basisCosts[j].toFixed(decNum) + "\t";
+            }
+        } else if (this.model.useRevisedSimplex) {
+            str += "||\t"
+            for (j = 0; j < this.height - 1; j++) {
+                str += basis[i - 1][j].toFixed(decNum) + "\t";
+            }
+        }
+        console.log(str);
+    }
+    console.log("########################");
+};
+
+Tableau.prototype.displayMatrix = function (M, title) {
+    var decNum = 4;
+    console.log("#############", title, "beg #############");
+    for (var i = 0; i < M.length; i++) {
+        var str = "";
+        for (var j = 0; j < M[0].length; j++) {
+            str += M[i][j].toFixed(decNum) + "\t";
+        }
+        console.log(str);
+    }
+    console.log("#############", title, "end #############");
+};
+
+Tableau.prototype.debugLog = function (callback, debug) {
+    if (debug) {
+        callback();
+    }
+};

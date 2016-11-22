@@ -17,24 +17,35 @@ Tableau.prototype.simplex = function () {
     this.bounded = true;
 
     // Execute Phase 1 to obtain a Basic Feasible Solution (BFS)
-    // console.log("new phase 1");
-    // console.log("phase 1");
-    this.phase1();
+    if (this.model.useRevisedSimplex) {
+        // console.log("using revised method");
+        this.LUSimplexPhase1();
+    }
+    else{
+        this.phase1();
+    }
+
 
     // Execute Phase 2
     if (this.feasible === true) {
         this.tmpIter++;
-        // console.log("new phase 2");
         // Running simplex on Initial Basic Feasible Solution (BFS)
         // N.B current solution is feasible
-        // console.log("iterations", this.branchAndCutIterations);
-        // if(this.branchAndCutIterations === 0)
-        this.phase2();
-        // else
-        // this.LUSimplexPhase2();
-        // if(this.tmpIter === 2)
-        //     throw new Error();
+        if (this.model.useRevisedSimplex) {
+            this.LUSimplexPhase2();
+        }
+        else{
+            this.phase2();
+        }
     }
+    // this.displayTableau();
+    //
+    // console.log();
+    // console.log("variables", this.variablesPerIndex);
+    // console.log("varIndexByRow", this.varIndexByRow);
+    // console.log("varIndexByCol", this.varIndexByCol);
+    // console.log("rowByVarIndex", this.rowByVarIndex);
+    // console.log("colByVarIndex", this.colByVarIndex);
 
     // console.log("SUCCESS");
 
@@ -49,6 +60,8 @@ Tableau.prototype.simplex = function () {
 //
 //-------------------------------------------------------------------
 Tableau.prototype.phase1 = function () {
+    // console.log("##########PHASE 1##########");
+    // this.displayTableau();
     var debugCheckForCycles = this.model.checkForCycles;
     var varIndexesCycle = [];
 
@@ -60,6 +73,11 @@ Tableau.prototype.phase1 = function () {
     var unrestricted;
     var iterations = 0;
     while (true) {
+        // console.log("PHASE 1 ITERATION :", iterations);
+        var debugLog = false;
+        // if (iterations === 0) {
+        //     this.displayTableau();
+        // }
         // Selecting leaving variable (feasibility condition):
         // Basic variable with most negative value
         var leavingRowIndex = 0;
@@ -76,16 +94,6 @@ Tableau.prototype.phase1 = function () {
                 leavingRowIndex = r;
             }
         }
-
-        // console.log("matrix");
-        // for(var i = 0; i < this.matrix.length; i++){
-        //     var tmpstr = "";
-        //     for(var j = 0; j < this.matrix[0].length; j++){
-        //         tmpstr += this.matrix[i][j].toFixed(2) + "\t";
-        //     }
-        //     console.log(tmpstr);
-        // }
-        // console.log("\n");
 
         // If nothing is strictly smaller than 0; we're done with phase 1.
         if (leavingRowIndex === 0) {
@@ -133,8 +141,26 @@ Tableau.prototype.phase1 = function () {
             }
         }
 
+        var tmpcol = new Array();
+        for (var i = 1; i < this.height; i++) {
+            tmpcol.push(matrix[i][enteringColumn]);
+        }
+        this.debugLog(function () { console.log("HERE entering col", enteringColumn, ":", tmpcol); }, debugLog);
+        this.debugLog(function () { console.log("HERE leaving row", leavingRowIndex, ":", matrix[leavingRowIndex].slice(1)); }, debugLog);
+
+
+        tmpcol = new Array();
+        for (var i = 1; i < this.height; i++) {
+            tmpcol.push(matrix[i][0]);
+        }
+        this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
+
+
         this.pivot(leavingRowIndex, enteringColumn);
         iterations += 1;
+
+        // this.displayTableau();
+
     }
 };
 
@@ -144,6 +170,9 @@ Tableau.prototype.phase1 = function () {
 //
 //-------------------------------------------------------------------
 Tableau.prototype.phase2 = function () {
+    // console.log("##########PHASE 2##########");
+    // this.displayTableau();
+
     var debugCheckForCycles = this.model.checkForCycles;
     var varIndexesCycle = [];
 
@@ -159,14 +188,11 @@ Tableau.prototype.phase2 = function () {
     var iterations = 0;
     var reducedCost, unrestricted;
     while (true) {
-        // for(var loop1 = 0; loop1 < matrix.length; loop1++){
-        //     var str = "";
-        //     for(var loop2 = 0; loop2 < matrix[0].length; loop2++){
-        //         str += matrix[loop1][loop2].toFixed(2) + " ";
-        //     }
-        //     console.log(str);
-        // }
-        // console.log("\n");
+        // if (iterations === 9) {
+		// 	throw true;
+		// }
+        // console.log("PHASE 2 ITERATION :", iterations);
+        var debugLog = false;
 
         var costRow = matrix[this.costRowIndex];
 
@@ -205,6 +231,11 @@ Tableau.prototype.phase2 = function () {
 
         if (nOptionalObjectives > 0) {
             // There exist optional improvable objectives
+            for (i = 0; i < nOptionalObjectives; i++) {
+				var tmpocost = this.optionalObjectives[i].reducedCosts.slice(1);
+                var optionalObjVal = [this.optionalObjectives[i].reducedCosts[0]];
+				this.debugLog(function () { console.log("optional", i, optionalObjVal, tmpocost); }, debugLog);
+			}
             var o = 0;
             while (enteringColumn === 0 && optionalCostsColumns.length > 0 && o < nOptionalObjectives) {
                 var optionalCostsColumns2 = [];
@@ -243,6 +274,12 @@ Tableau.prototype.phase2 = function () {
             }
         }
 
+        var tmpcol = new Array();
+        for (var i = 1; i < this.height; i++) {
+            tmpcol.push(matrix[i][0]);
+        }
+        this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
+
 
         // If no entering column could be found we're done with phase 2.
         if (enteringColumn === 0) {
@@ -257,6 +294,7 @@ Tableau.prototype.phase2 = function () {
         var varIndexByRow = this.varIndexByRow;
 
         for (var r = 1; r <= lastRow; r++) {
+            // this.debugLog(function () { console.log("minQuotient", minQuotient); }, debugLog);
             var row = matrix[r];
             var rhsValue = row[rhsColumn];
             var colValue = row[enteringColumn];
@@ -277,6 +315,16 @@ Tableau.prototype.phase2 = function () {
                 leavingRow = r;
             }
         }
+        // console.log("minQuotient", minQuotient);
+
+        tmpcol = new Array();
+        for (var i = 1; i < this.height; i++) {
+            tmpcol.push(matrix[i][enteringColumn]);
+        }
+        this.debugLog(function () { console.log("HERE entering col", enteringColumn, ":", tmpcol); }, debugLog);
+        this.debugLog(function () { console.log("HERE leaving row", leavingRow, ":", matrix[leavingRow].slice(1)); }, debugLog);
+
+
 
         if (minQuotient === Infinity) {
             // optimal value is -Infinity
@@ -300,6 +348,8 @@ Tableau.prototype.phase2 = function () {
 
         this.pivot(leavingRow, enteringColumn, true);
         iterations += 1;
+
+        // this.displayTableau();
     }
 };
 
@@ -375,6 +425,11 @@ Tableau.prototype.pivot = function (pivotRowIndex, pivotColumnIndex) {
                     v0 = pivotRow[c];
                     if (v0 !== 0) {
                         row[c] = row[c] - coefficient * v0;
+                        // if(i === 0){
+                        //     console.log("diff_"+i, coefficient * v0);
+                        //     console.log("val_"+i, v0);
+                        //     console.log("minRatio", coefficient);
+                        // }
                     }
                 }
 

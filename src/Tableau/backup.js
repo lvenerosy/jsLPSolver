@@ -1,4 +1,5 @@
 /*global require*/
+/*global console*/
 var Tableau = require("./Tableau.js");
 
 Tableau.prototype.copy = function () {
@@ -42,13 +43,33 @@ Tableau.prototype.copy = function () {
     copy.matrix = matrixCopy;
 
 
-    // var basis = this.basis;
-    // var basisCopy = new Array(this.height - 1);
-    // for (r = 0; r < this.height - 1; r++) {
-    //     basisCopy[r] = basis[r].slice();
-    // }
-    //
-    // copy.basis = basisCopy;
+    if(this.model.useRevisedSimplex){
+        var basis = this.basis;
+        var basisCopy = new Array(this.height - 1);
+        var nextBasisIndex = this.nextBasisIndex;
+        copy.nextBasisIndex = nextBasisIndex;
+        for (r = 0; r < nextBasisIndex; r++) {
+            basisCopy[r] = basis[r].slice();
+        }
+
+        copy.basis = basisCopy;
+
+
+        copy.basisCosts = this.basisCosts.slice();
+
+        copy.originalRHS = this.originalRHS.slice();
+
+
+        var basisOptionalCosts = this.basisOptionalCosts;
+
+        if(basisOptionalCosts !== null){
+            var basisOptionalCostsCopy = new Array(basisOptionalCosts.length);
+            for(o = 0; o < basisOptionalCosts.length; o++){
+                basisOptionalCostsCopy[o] = basisOptionalCosts[o].slice();
+            }
+            copy.basisOptionalCosts = basisOptionalCostsCopy;
+        }
+    }
 
     return copy;
 };
@@ -64,7 +85,6 @@ Tableau.prototype.restore = function () {
 
     var save = this.savedState;
     var savedMatrix = save.matrix;
-    var savedBasis = save.basis;
     this.nVars = save.nVars;
     this.model = save.model;
 
@@ -78,23 +98,17 @@ Tableau.prototype.restore = function () {
     this.height = save.height;
 
     // Restoring matrix
+    var savedRow;
+    var row;
     var r, c;
     for (r = 0; r < this.height; r += 1) {
-        var savedRow = savedMatrix[r];
-        var row = this.matrix[r];
+        savedRow = savedMatrix[r];
+        row = this.matrix[r];
         for (c = 0; c < this.width; c += 1) {
             row[c] = savedRow[c];
         }
     }
 
-    // // Restoring basis
-    // for (r = 0; r < this.height - 1; r += 1) {
-    //     var savedRow = savedBasis[r];
-    //     var row = this.basis[r];
-    //     for (c = 0; c < this.height - 1; c += 1) {
-    //         row[c] = savedRow[c];
-    //     }
-    // }
 
     // Restoring all the other structures
     var savedBasicIndexes = save.varIndexByRow;
@@ -130,6 +144,43 @@ Tableau.prototype.restore = function () {
             var optionalObjectiveCopy = save.optionalObjectives[o].copy();
             this.optionalObjectives[o] = optionalObjectiveCopy;
             this.optionalObjectivePerPriority[optionalObjectiveCopy.priority] = optionalObjectiveCopy;
+        }
+    }
+
+
+    if(this.model.useRevisedSimplex){
+        // Restoring basis
+        var savedBasis = save.basis;
+        var basis = this.basis;
+        this.nextBasisIndex = save.nextBasisIndex;
+        var height = this.nextBasisIndex;
+        for(r = 0; r < height; r += 1){
+            savedRow = savedBasis[r];
+            row = basis[r];
+            for(c = 0; c < height; c += 1){
+                row[c] = savedRow[c];
+            }
+        }
+
+
+        var savedBasisCosts = save.basisCosts;
+        var basisCosts = this.basisCosts;
+        for(c = 0; c < height; c += 1){
+            basisCosts[c] = savedBasisCosts[c];
+        }
+
+        for (var i = 0; i < save.nextBasisIndex; i++) {
+            this.originalRHS[i] = save.originalRHS[i];
+        }
+
+
+        var savedBasisOptionalCosts = save.basisOptionalCosts;
+        if(savedBasisOptionalCosts !== null){
+            var nOptionalObjectives = this.optionalObjectives.length;
+            var basisOptionalCosts = this.basisOptionalCosts;
+            for(r = 0; r < nOptionalObjectives; r += 1){
+                basisOptionalCosts[r] = savedBasisOptionalCosts[r].slice();
+            }
         }
     }
 };

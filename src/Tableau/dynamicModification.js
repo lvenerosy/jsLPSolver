@@ -98,6 +98,11 @@ Tableau.prototype.updateRightHandSide = function (constraint, difference) {
         // Updating RHS with the difference between the old and the new one
         this.matrix[constraintRow][this.rhsColumn] -= difference;
     }
+
+    /*************
+        TODO
+    **************/
+    // update basis costs too ?
 };
 
 Tableau.prototype.updateConstraintCoefficient = function (constraint, variable, difference) {
@@ -105,8 +110,14 @@ Tableau.prototype.updateConstraintCoefficient = function (constraint, variable, 
     if (constraint.index === variable.index) {
         throw new Error("[Tableau.updateConstraintCoefficient] constraint index should not be equal to variable index !");
     }
+    var r;
 
-    var r = this._putInBase(constraint.index);
+    if (this.model.useRevisedSimplex){
+        r = this._revisedPutInBase(constraint.index);
+    }
+    else{
+        r = this._putInBase(constraint.index);
+    }
 
     var colVar = this.colByVarIndex[variable.index];
     if (colVar === -1) {
@@ -117,6 +128,10 @@ Tableau.prototype.updateConstraintCoefficient = function (constraint, variable, 
     } else {
         this.matrix[r][colVar] -= difference;
     }
+    /*************
+        TODO
+    **************/
+    // update basis costs too ?
 };
 
 Tableau.prototype.updateCost = function (variable, difference) {
@@ -147,6 +162,10 @@ Tableau.prototype.updateCost = function (variable, difference) {
         // Updating coefficient with difference
         this.matrix[0][varColumn] -= difference;
     }
+    /*************
+        TODO
+    **************/
+    // update basis costs too ?
 };
 
 Tableau.prototype.addConstraint = function (constraint) {
@@ -201,16 +220,66 @@ Tableau.prototype.addConstraint = function (constraint) {
 Tableau.prototype.removeConstraint = function (constraint) {
     var slackIndex = constraint.index;
     var lastRow = this.height - 1;
+    var matrix = this.matrix;
+    var r;
 
-    // Putting the constraint's slack in the base
-    var r = this._putInBase(slackIndex);
+    if(this.model.useRevisedSimplex){
+        var basis = this.basis;
+        var tmpVal;
+        var nextBasisIndex = this.nextBasisIndex;
+
+        r = this._revisedPutInBase(slackIndex);
+
+        // put slack variable column at the end
+        for(var i = 0; i < nextBasisIndex; i++){
+            tmpVal = basis[i][r-1];
+            basis[i][r-1] = basis[i][nextBasisIndex-1];
+            basis[i][nextBasisIndex-1] = tmpVal;
+        }
+
+        // put slack variable row at the end
+        for(i = 0; i < nextBasisIndex; i++){
+            tmpVal = basis[r-1][i];
+            basis[r-1][i] = basis[nextBasisIndex-1][i];
+            basis[nextBasisIndex-1][i] = tmpVal;
+        }
+
+        // Switch basis costs
+        var basisCosts = this.basisCosts;
+        tmpVal = basisCosts[r-1];
+        basisCosts[r-1] = basisCosts[nextBasisIndex-1];
+        basisCosts[nextBasisIndex-1] = tmpVal;
+
+        // Switch optional basis costs
+        var basisOptionalCosts = this.basisOptionalCosts;
+        if(basisOptionalCosts !== null){
+            for(i = 0; i < basisOptionalCosts.length; i++){
+                tmpVal = basisOptionalCosts[i][r-1];
+                basisOptionalCosts[i][r-1] = basisOptionalCosts[i][nextBasisIndex-1];
+                basisOptionalCosts[i][nextBasisIndex-1] = tmpVal;
+            }
+        }
+
+        // Switch in RHS
+        tmpVal = this.originalRHS[r-1];
+        this.originalRHS[r-1] = this.originalRHS[nextBasisIndex-1];
+        this.originalRHS[nextBasisIndex-1] = tmpVal;
+        this.originalRHS.splice(nextBasisIndex-1, 1);
+
+        // remove them
+        this.nextBasisIndex--;
+    }
+    else{
+        // Putting the constraint's slack in the base
+        r = this._putInBase(slackIndex);
+    }
 
     // Removing constraint
     // by putting the corresponding row at the bottom of the matrix
     // and virtually reducing the height of the matrix by 1
-    var tmpRow = this.matrix[lastRow];
-    this.matrix[lastRow] = this.matrix[r];
-    this.matrix[r] = tmpRow;
+    var tmpRow = matrix[lastRow];
+    matrix[lastRow] = matrix[r];
+    matrix[r] = tmpRow;
 
     // Removing associated slack variable from basic variables
     this.varIndexByRow[r] = this.varIndexByRow[lastRow];
@@ -262,19 +331,33 @@ Tableau.prototype.addVariable = function (variable) {
     this.colByVarIndex[varIndex] = lastColumn;
 
     this.width += 1;
+
+    /*************
+        TODO
+    **************/
+    // update (optional) basis costs too ?
 };
+
 
 
 Tableau.prototype.removeVariable = function (variable) {
     var varIndex = variable.index;
+    var matrix = this.matrix;
+    var c;
 
-    // Putting the variable out of the base
-    var c = this._takeOutOfBase(varIndex);
+    if(this.model.useRevisedSimplex){
+        c = this._revisedTakeOutOfBase(varIndex);
+    }
+    else{
+        // Putting the variable out of the base
+        c = this._takeOutOfBase(varIndex);
+    }
+
     var lastColumn = this.width - 1;
     if (c !== lastColumn) {
         var lastRow = this.height - 1;
         for (var r = 0; r <= lastRow; r += 1) {
-            var row = this.matrix[r];
+            var row = matrix[r];
             row[c] = row[lastColumn];
         }
 
@@ -301,4 +384,9 @@ Tableau.prototype.removeVariable = function (variable) {
     variable.index = -1;
 
     this.width -= 1;
+
+    /*************
+        TODO
+    **************/
+    // update basis costs too ?
 };

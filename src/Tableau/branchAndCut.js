@@ -79,11 +79,24 @@ Tableau.prototype.branchAndCut = function () {
 
     // 1.) Load a model into the queue
     var branch = new Branch(-Infinity, []);
+
+    if (this.model.useRevisedSimplex) {
+        // console.log("HERE revised bnc rhs", this.originalRHS);
+    } else {
+        var tmpRHS = new Array();
+        for (var i = 1; i < this.height; i++) {
+            tmpRHS.push(this.matrix[i][0]);
+        }
+        // console.log("HERE bnc rhs", tmpRHS);
+    }
+
+
     branches.push(branch);
 
     // If all branches have been exhausted terminate the loop
     while (branches.length > 0) {
         // Get a model from the queue
+        // console.log("BRANCHES", JSON.stringify(branches));
         branch = branches.pop();
         if (branch.relaxedEvaluation > bestEvaluation) {
             continue;
@@ -99,9 +112,17 @@ Tableau.prototype.branchAndCut = function () {
         //     console.log(cuts[loop].type, " ", cuts[loop].value);
         // }
         // console.log("\n");
+
+        // console.log();
+        // console.log("NEW BRANCH N CUT", this.branchAndCutIterations);
         this.applyCuts(cuts);
 
         this.branchAndCutIterations++;
+
+        // if (this.branchAndCutIterations === 3) {
+        //     throw true;
+        // }
+
         if (this.feasible === false) {
             continue;
         }
@@ -129,6 +150,8 @@ Tableau.prototype.branchAndCut = function () {
             }
         }
 
+        // console.log("change best branch ?", bestEvaluation, evaluation, this.branchAndCutIterations);
+
         // Is the model both integral and feasible?
         if (this.isIntegral() === true) {
             if (this.branchAndCutIterations === 1) {
@@ -146,6 +169,7 @@ Tableau.prototype.branchAndCut = function () {
                 // TODO: implement a better strategy for saving the tableau?
                 this.save();
             }
+
 
             // If the solution is
             //  a. Feasible
@@ -211,9 +235,11 @@ Tableau.prototype.branchAndCut = function () {
 
             var cutHigh = new Cut("min", varIndex, min);
             cutsHigh.push(cutHigh);
+            // console.log("HIGH CUT", cutHigh);
 
             var cutLow = new Cut("max", varIndex, max);
             cutsLow.push(cutLow);
+            // console.log("LOW CUT", cutLow);
 
             branches.push(new Branch(evaluation, cutsHigh));
             branches.push(new Branch(evaluation, cutsLow));

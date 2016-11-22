@@ -56,7 +56,7 @@ var Solver = function () {
      *        activateMIRCuts: set to true to activate the MIR cuts
      *        debug: set to true to enable cycle detection
      **************************************************************/
-    this.Solve = function (model, precision, full, validate, activateMIRCuts, debug) {
+    this.Solve = function (model, precision, full, validate, activateRevisedSimplex, activateMIRCuts, debug) {
     // this.Solve = function (model, precision, full, validate) {
         // Run our validations on the model
         // if the model doesn't have a validate
@@ -76,8 +76,26 @@ var Solver = function () {
             model = new Model(precision).loadJson(model);
         }
 
-        model.activateMIRCuts(activateMIRCuts);
-        model.debug(debug);
+        if (typeof activateRevisedSimplex === "undefined") {
+            model.activateRevisedSimplex(true);
+        }
+        else {
+            model.activateRevisedSimplex(activateRevisedSimplex);
+        }
+
+        if (typeof activateMIRCuts === "undefined") {
+            model.activateMIRCuts(true);
+        }
+        else {
+            model.activateMIRCuts(activateMIRCuts);
+        }
+
+        if (typeof debug === "undefined") {
+            model.debug(false);
+        }
+        else {
+            model.debug(debug);
+        }
 
         var solution = model.solve();
         this.lastSolvedModel = model;

@@ -9,19 +9,73 @@ Tableau.prototype.addCutConstraints = function (cutConstraints) {
     var heightWithCuts = height + nCutConstraints;
 
     // Adding rows to hold cut constraints
-    for (var h = height; h < heightWithCuts; h += 1) {
+    var i, j, c, h;
+    for (h = height; h < heightWithCuts; h += 1) {
         if (this.matrix[h] === undefined) {
             this.matrix[h] = this.matrix[h - 1].slice();
         }
     }
 
+
+    if (this.model.useRevisedSimplex) {
+        // Reinitializing values in B
+        var B = this.basis;
+        var nextBasisIndex = this.nextBasisIndex;
+        var positionFillUntil = Math.min(B.length, heightWithCuts - 1);
+        for (i = 0; i < nextBasisIndex; i++) {
+            B[i].fill(0, nextBasisIndex, positionFillUntil);
+        }
+        for (i = nextBasisIndex; i < positionFillUntil; i++) {
+            B[i].fill(0, 0, positionFillUntil);
+            B[i][i] = 1;
+        }
+
+        var nbElementsToAdd = heightWithCuts - 1 - B.length;
+        var fillerArray = [];
+        if (nbElementsToAdd > 0) {
+            fillerArray = new Array(nbElementsToAdd).fill(0);
+
+            // Adding n columns to B
+            for (i = 0; i < positionFillUntil; i++) {
+                B[i].push.apply(B[i], fillerArray);
+            }
+
+            // Adding n rows to B for the slack variables
+            for (h = B.length; h < heightWithCuts - 1; h++) {
+                B[h] = new Array(heightWithCuts - 1).fill(0);
+                B[h][h] = 1;
+            }
+        }
+
+        // Adding n entries to the basis costs
+        this.basisCosts.fill(0, nextBasisIndex, positionFillUntil);
+        this.basisCosts.push.apply(this.basisCosts, fillerArray);
+
+        // Adding n entries to all the optional basis costs
+        if (this.basisOptionalCosts !== null) {
+            for (i = 0; i < this.basisOptionalCosts.length; i++) {
+                var basisOptionalCost = this.basisOptionalCosts[i];
+                basisOptionalCost.fill(0, nextBasisIndex, positionFillUntil);
+                basisOptionalCost.push.apply(basisOptionalCost, fillerArray);
+            }
+        }
+
+        // Adding n entries to the original RHS
+        this.originalRHS.fill(0, nextBasisIndex, positionFillUntil);
+        this.originalRHS.push.apply(this.originalRHS, fillerArray);
+
+        // Update next basis index
+        this.nextBasisIndex = heightWithCuts - 1;
+
+    }
+
+
     // Adding cut constraints
     this.height = heightWithCuts;
     this.nVars = this.width + this.height - 2;
 
-    var c;
     var lastColumn = this.width - 1;
-    for (var i = 0; i < nCutConstraints; i += 1) {
+    for (i = 0; i < nCutConstraints; i += 1) {
         var cut = cutConstraints[i];
 
         // Constraint row index
@@ -33,22 +87,92 @@ Tableau.prototype.addCutConstraints = function (cutConstraints) {
         var varIndex = cut.varIndex;
         var varRowIndex = this.rowByVarIndex[varIndex];
         var constraintRow = this.matrix[r];
+
+
+
+        // if (this.model.useRevisedSimplex) {
+        //     if (varRowIndex === -1) {
+        //         console.log("NON BASIC");
+        //         // Variable is non basic
+        //         varRowIndex = this._revisedPutInBase(varIndex);
+        //     }
+        //     // Variable is now basic
+        //     var varRow = this.matrix[varRowIndex];
+        //     var varValue = varRow[this.rhsColumn];
+        //     constraintRow[this.rhsColumn] = sign * (cut.value - varValue);
+        //     this.originalRHS[r - 1] = constraintRow[this.rhsColumn];
+        //
+        //     var b = new Array(this.nextBasisIndex);
+        //     for (var j = 1; j <= this.nextBasisIndex; j++) {
+        //         b[j - 1] = this.matrix[j][this.rhsColumn];
+        //     }
+        //     var LU = this.decompose2(B, b);
+        //     updatedOriginalRow = this.LUEvaluateRow(LU[0], LU[1], this.matrix, varRowIndex);
+        //     for (var j = 1; j < this.width; j++) {
+        //         this.matrix[r][j] = updatedOriginalRow[j - 1] * -sign;
+        //     }
+        // } else {
+        //     if (varRowIndex === -1) {
+        //         // Variable is non basic
+        //         constraintRow[this.rhsColumn] = sign * cut.value;
+        //         for (c = 1; c <= lastColumn; c += 1) {
+        //             constraintRow[c] = 0;
+        //         }
+        //         constraintRow[this.colByVarIndex[varIndex]] = sign;
+        //     } else {
+        //         // Variable is basic
+        //         var varRow = this.matrix[varRowIndex];
+        //         var varValue = varRow[this.rhsColumn];
+        //         constraintRow[this.rhsColumn] = sign * (cut.value - varValue);
+        //         for (c = 1; c <= lastColumn; c += 1) {
+        //             constraintRow[c] = -sign * varRow[c];
+        //         }
+        //     }
+        // }
+
+
+
         if (varRowIndex === -1) {
+            // console.log("HERE NON BASIC");
             // Variable is non basic
             constraintRow[this.rhsColumn] = sign * cut.value;
+            if (this.model.useRevisedSimplex) {
+                var b = new Array(this.nextBasisIndex);
+                for (j = 1; j < this.height; j++) {
+                    b[j - 1] = this.matrix[j][this.rhsColumn];
+                }
+                var LU = this.decompose2(this.basis, b);
+                this.originalRHS = this.reverseLUEvaluate(LU[0], LU[1], b);
+            }
             for (c = 1; c <= lastColumn; c += 1) {
                 constraintRow[c] = 0;
             }
             constraintRow[this.colByVarIndex[varIndex]] = sign;
         } else {
+            // console.log("HERE BASIC");
             // Variable is basic
             var varRow = this.matrix[varRowIndex];
             var varValue = varRow[this.rhsColumn];
             constraintRow[this.rhsColumn] = sign * (cut.value - varValue);
-            for (c = 1; c <= lastColumn; c += 1) {
-                constraintRow[c] = -sign * varRow[c];
+            if (this.model.useRevisedSimplex) {
+                this.originalRHS[r - 1] = constraintRow[this.rhsColumn];
+
+                var b = new Array(this.nextBasisIndex);
+                for (var j = 1; j <= this.nextBasisIndex; j++) {
+                    b[j - 1] = this.matrix[j][this.rhsColumn];
+                }
+                var LU = this.decompose2(B, b);
+                updatedOriginalRow = this.LUEvaluateRow(LU[0], LU[1], this.matrix, varRowIndex);
+                for (var j = 1; j < this.width; j++) {
+                    this.matrix[r][j] = updatedOriginalRow[j - 1] * -sign;
+                }
+            } else {
+                for (c = 1; c <= lastColumn; c += 1) {
+                    constraintRow[c] = -sign * varRow[c];
+                }
             }
         }
+
 
         // Creating slack variable
         var slackVarIndex = this.getNewElementIndex();

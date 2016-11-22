@@ -40,6 +40,8 @@ function Model(precision, name) {
     this.tableauInitialized = false;
     this.relaxationIndex = 1;
 
+    this.useRevisedSimplex = false;
+
     this.useMIRCuts = true;
 
     this.checkForCycles = false;
@@ -80,6 +82,39 @@ Model.prototype._addConstraint = function (constraint) {
     this.nConstraints += 1;
     if (this.tableauInitialized === true) {
         this.tableau.addConstraint(constraint);
+    }
+    if(this.useRevisedSimplex){
+        var basis = this.tableau.basis;
+        var nextBasisIndex = this.tableau.nextBasisIndex;
+
+        var allocate = basis[nextBasisIndex];
+        if(allocate === undefined){
+            basis.push(new Array(nextBasisIndex + 1));
+        }
+        var row = basis[nextBasisIndex];
+        for(var c = 0; c < nextBasisIndex; c++){
+            row[c] = 0;
+            if(allocate === undefined){
+                basis[c].push(0);
+            }
+            else{
+                basis[c][nextBasisIndex] = 0;
+            }
+        }
+        row[nextBasisIndex] = 1;
+
+        this.tableau.nextBasisIndex++;
+
+        this.tableau.basisCosts.push(0);
+
+        var sign = constraint.isUpperBound ? 1 : -1;
+        this.tableau.originalRHS.push(sign * constraint.rhs);
+
+
+        /*************
+            TODO
+        **************/
+        // update optional basis costs too
     }
 };
 
@@ -366,6 +401,10 @@ Model.prototype.restore = function () {
 
 Model.prototype.activateMIRCuts = function (useMIRCuts) {
     this.useMIRCuts = useMIRCuts;
+};
+
+Model.prototype.activateRevisedSimplex = function (useRevisedSimplex) {
+    this.useRevisedSimplex = useRevisedSimplex;
 };
 
 Model.prototype.debug = function (debugCheckForCycles) {

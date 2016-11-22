@@ -59,7 +59,12 @@ function Tableau(precision) {
 
     this.branchAndCutIterations = 0;
 
-    // this.basis = null;
+    this.basis = [];
+    this.basisCosts = [];
+    this.nextBasisIndex = 0;
+    this.basisOptionalCosts = null;
+    this.originalRHS = [];
+    this.originalZ = 0;
 
     // get rid of it (in simplex)
     this.tmpIter = 0;
@@ -91,6 +96,7 @@ OptionalObjective.prototype.copy = function () {
 };
 
 Tableau.prototype.setOptionalObjective = function (priority, column, cost) {
+    var useRevisedSimplex = this.model.useRevisedSimplex;
     var objectiveForPriority = this.objectivesByPriority[priority];
     if (objectiveForPriority === undefined) {
         var nColumns = Math.max(this.width, column + 1);
@@ -100,6 +106,15 @@ Tableau.prototype.setOptionalObjective = function (priority, column, cost) {
         this.optionalObjectives.sort(function (a, b) {
             return a.priority - b.priority;
         });
+
+        if (useRevisedSimplex) {
+            if (this.basisOptionalCosts === null) {
+                this.basisOptionalCosts = new Array(1);
+                this.basisOptionalCosts[0] = this.basisCosts.slice();
+            } else {
+                this.basisOptionalCosts.push(this.basisCosts.slice());
+            }
+        }
     }
 
     objectiveForPriority.reducedCosts[column] = cost;
@@ -137,18 +152,6 @@ Tableau.prototype.initialize = function (width, height, variables, unrestrictedV
     this.colByVarIndex = new Array(this.nVars);
 
     this.lastElementIndex = this.nVars;
-
-    // // BUILD THE BASIS
-    // tmpRow = new Array(height - 1);
-    // for (i = 0; i < height - 1; i++) {
-    //     tmpRow[i] = 0;
-    // }
-    //
-    // this.basis = new Array(height - 1);
-    // for (j = 0; j < height - 1; j++) {
-    //     this.basis[j] = tmpRow.slice();
-    //     this.basis[j][j] = 1;
-    // }
 };
 
 Tableau.prototype._resetMatrix = function () {
@@ -198,6 +201,9 @@ Tableau.prototype._resetMatrix = function () {
             }
 
             row[0] = constraint.rhs;
+            if (this.model.useRevisedSimplex) {
+                this.originalRHS[rowIndex - 2] = constraint.rhs;
+            }
         } else {
             for (t = 0; t < nTerms; t += 1) {
                 term = terms[t];
@@ -206,6 +212,9 @@ Tableau.prototype._resetMatrix = function () {
             }
 
             row[0] = -constraint.rhs;
+            if (this.model.useRevisedSimplex) {
+                this.originalRHS[rowIndex - 2] = -constraint.rhs;
+            }
         }
     }
 };
