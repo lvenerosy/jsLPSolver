@@ -77,14 +77,14 @@ var Solver = function () {
         }
 
         if (typeof activateRevisedSimplex === "undefined") {
-            model.activateRevisedSimplex(true);
+            model.activateRevisedSimplex(false);
         }
         else {
             model.activateRevisedSimplex(activateRevisedSimplex);
         }
 
         if (typeof activateMIRCuts === "undefined") {
-            model.activateMIRCuts(true);
+            model.activateMIRCuts(false);
         }
         else {
             model.activateMIRCuts(activateMIRCuts);

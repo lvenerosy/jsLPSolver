@@ -16,10 +16,9 @@ Tableau.prototype.addCutConstraints = function (cutConstraints) {
         }
     }
 
-
+    var B = this.basis;
     if (this.model.useRevisedSimplex) {
         // Reinitializing values in B
-        var B = this.basis;
         var nextBasisIndex = this.nextBasisIndex;
         var positionFillUntil = Math.min(B.length, heightWithCuts - 1);
         for (i = 0; i < nextBasisIndex; i++) {
@@ -131,17 +130,18 @@ Tableau.prototype.addCutConstraints = function (cutConstraints) {
         // }
 
 
-
+        var b;
+        var LU;
         if (varRowIndex === -1) {
             // console.log("HERE NON BASIC");
             // Variable is non basic
             constraintRow[this.rhsColumn] = sign * cut.value;
             if (this.model.useRevisedSimplex) {
-                var b = new Array(this.nextBasisIndex);
+                b = new Array(this.nextBasisIndex);
                 for (j = 1; j < this.height; j++) {
                     b[j - 1] = this.matrix[j][this.rhsColumn];
                 }
-                var LU = this.decompose2(this.basis, b);
+                LU = this.decompose2(this.basis, b);
                 this.originalRHS = this.reverseLUEvaluate(LU[0], LU[1], b);
             }
             for (c = 1; c <= lastColumn; c += 1) {
@@ -157,13 +157,13 @@ Tableau.prototype.addCutConstraints = function (cutConstraints) {
             if (this.model.useRevisedSimplex) {
                 this.originalRHS[r - 1] = constraintRow[this.rhsColumn];
 
-                var b = new Array(this.nextBasisIndex);
-                for (var j = 1; j <= this.nextBasisIndex; j++) {
+                b = new Array(this.nextBasisIndex);
+                for (j = 1; j <= this.nextBasisIndex; j++) {
                     b[j - 1] = this.matrix[j][this.rhsColumn];
                 }
-                var LU = this.decompose2(B, b);
-                updatedOriginalRow = this.LUEvaluateRow(LU[0], LU[1], this.matrix, varRowIndex);
-                for (var j = 1; j < this.width; j++) {
+                LU = this.decompose2(B, b);
+                var updatedOriginalRow = this.LUEvaluateRow(LU[0], LU[1], this.matrix, varRowIndex);
+                for (j = 1; j < this.width; j++) {
                     this.matrix[r][j] = updatedOriginalRow[j - 1] * -sign;
                 }
             } else {
@@ -273,7 +273,7 @@ Tableau.prototype._addUpperBoundMIRCut = function(rowIndex) {
 	this.varIndexByRow[r] = slackVarIndex;
 	this.rowByVarIndex[slackVarIndex] = r;
 	this.colByVarIndex[slackVarIndex] = -1;
-	this.variablesPerIndex[slackVarIndex] = new SlackVariable("s"+slackVarIndex, slackVarIndex);
+	this.variablesPerIndex[slackVarIndex] = new SlackVariable("s" + slackVarIndex, slackVarIndex);
 
 	matrix[r][this.rhsColumn] = -f;
 

@@ -199,7 +199,7 @@ Tableau.prototype.displayTableau = function () {
                 str += basisCosts[j].toFixed(decNum) + "\t";
             }
         } else if (this.model.useRevisedSimplex) {
-            str += "||\t"
+            str += "||\t";
             for (j = 0; j < this.height - 1; j++) {
                 str += basis[i - 1][j].toFixed(decNum) + "\t";
             }

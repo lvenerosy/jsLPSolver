@@ -42,7 +42,7 @@ function Model(precision, name) {
 
     this.useRevisedSimplex = false;
 
-    this.useMIRCuts = true;
+    this.useMIRCuts = false;
 
     this.checkForCycles = false;
 }

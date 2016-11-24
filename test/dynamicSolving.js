@@ -155,30 +155,10 @@ describe("Testing Dynamic Model Modification", function () {
         assert.deepEqual(hat.value.toFixed(2), 12.38);
         assert.deepEqual(socks.value, 0);
 
-        var h;
-        var w;
-        var str;
-        for(h = 0; h < model4d.tableau.height; h++){
-            str = "";
-            for(w = 0; w < model4d.tableau.width; w++){
-                str += model4d.tableau.matrix[h][w] + "\t";
-            }
-            console.log(str);
-        }
-        console.log();
-
         //-------------------------------------------
         // REMOVING A VARIABLE
         //-------------------------------------------
         model4d.removeVariable(pants);
-
-        for(h = 0; h < model4d.tableau.height; h++){
-            str = "";
-            for(w = 0; w < model4d.tableau.width; w++){
-                str += model4d.tableau.matrix[h][w] + "\t";
-            }
-            console.log(str);
-        }
 
         var solution6 = model4d.solve();
         assert.deepEqual(solution6.evaluation.toFixed(2), 400.0);

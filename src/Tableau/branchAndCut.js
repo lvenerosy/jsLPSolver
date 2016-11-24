@@ -80,14 +80,11 @@ Tableau.prototype.branchAndCut = function () {
     // 1.) Load a model into the queue
     var branch = new Branch(-Infinity, []);
 
-    if (this.model.useRevisedSimplex) {
-        // console.log("HERE revised bnc rhs", this.originalRHS);
-    } else {
-        var tmpRHS = new Array();
+    if (!this.model.useRevisedSimplex) {
+        var tmpRHS = [];
         for (var i = 1; i < this.height; i++) {
             tmpRHS.push(this.matrix[i][0]);
         }
-        // console.log("HERE bnc rhs", tmpRHS);
     }
 
 

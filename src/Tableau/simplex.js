@@ -141,19 +141,20 @@ Tableau.prototype.phase1 = function () {
             }
         }
 
-        var tmpcol = new Array();
-        for (var i = 1; i < this.height; i++) {
+        var i;
+        var tmpcol = [];
+        for (i = 1; i < this.height; i++) {
             tmpcol.push(matrix[i][enteringColumn]);
         }
-        this.debugLog(function () { console.log("HERE entering col", enteringColumn, ":", tmpcol); }, debugLog);
-        this.debugLog(function () { console.log("HERE leaving row", leavingRowIndex, ":", matrix[leavingRowIndex].slice(1)); }, debugLog);
+        // this.debugLog(function () { console.log("HERE entering col", enteringColumn, ":", tmpcol); }, debugLog);
+        // this.debugLog(function () { console.log("HERE leaving row", leavingRowIndex, ":", matrix[leavingRowIndex].slice(1)); }, debugLog);
 
 
-        tmpcol = new Array();
-        for (var i = 1; i < this.height; i++) {
+        tmpcol = [];
+        for (i = 1; i < this.height; i++) {
             tmpcol.push(matrix[i][0]);
         }
-        this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
+        // this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
 
 
         this.pivot(leavingRowIndex, enteringColumn);
@@ -188,9 +189,6 @@ Tableau.prototype.phase2 = function () {
     var iterations = 0;
     var reducedCost, unrestricted;
     while (true) {
-        // if (iterations === 9) {
-		// 	throw true;
-		// }
         // console.log("PHASE 2 ITERATION :", iterations);
         var debugLog = false;
 
@@ -229,12 +227,13 @@ Tableau.prototype.phase2 = function () {
             }
         }
 
+        var i;
         if (nOptionalObjectives > 0) {
             // There exist optional improvable objectives
             for (i = 0; i < nOptionalObjectives; i++) {
 				var tmpocost = this.optionalObjectives[i].reducedCosts.slice(1);
                 var optionalObjVal = [this.optionalObjectives[i].reducedCosts[0]];
-				this.debugLog(function () { console.log("optional", i, optionalObjVal, tmpocost); }, debugLog);
+				// this.debugLog(function () { console.log("optional", i, optionalObjVal, tmpocost); }, debugLog);
 			}
             var o = 0;
             while (enteringColumn === 0 && optionalCostsColumns.length > 0 && o < nOptionalObjectives) {
@@ -243,7 +242,7 @@ Tableau.prototype.phase2 = function () {
 
                 enteringValue = precision;
 
-                for (var i = 0; i < optionalCostsColumns.length; i++) {
+                for (i = 0; i < optionalCostsColumns.length; i++) {
                     c = optionalCostsColumns[i];
 
                     reducedCost = reducedCosts[c];
@@ -274,11 +273,11 @@ Tableau.prototype.phase2 = function () {
             }
         }
 
-        var tmpcol = new Array();
-        for (var i = 1; i < this.height; i++) {
+        var tmpcol = [];
+        for (i = 1; i < this.height; i++) {
             tmpcol.push(matrix[i][0]);
         }
-        this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
+        // this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
 
 
         // If no entering column could be found we're done with phase 2.
@@ -317,12 +316,12 @@ Tableau.prototype.phase2 = function () {
         }
         // console.log("minQuotient", minQuotient);
 
-        tmpcol = new Array();
-        for (var i = 1; i < this.height; i++) {
+        tmpcol = [];
+        for (i = 1; i < this.height; i++) {
             tmpcol.push(matrix[i][enteringColumn]);
         }
-        this.debugLog(function () { console.log("HERE entering col", enteringColumn, ":", tmpcol); }, debugLog);
-        this.debugLog(function () { console.log("HERE leaving row", leavingRow, ":", matrix[leavingRow].slice(1)); }, debugLog);
+        // this.debugLog(function () { console.log("HERE entering col", enteringColumn, ":", tmpcol); }, debugLog);
+        // this.debugLog(function () { console.log("HERE leaving row", leavingRow, ":", matrix[leavingRow].slice(1)); }, debugLog);
 
 
 
