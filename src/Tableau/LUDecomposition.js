@@ -48,103 +48,128 @@ Tableau.prototype.decompose = function (B) {
 	return [L, U];
 };
 
-Tableau.prototype.decompose2 = function (B, b) {
+Tableau.prototype.divideRowByFactor = function (rowIndex, factor) {
+	if (factor === 0) {
+		throw new Error("Dividing by zero");
+	}
+	var B = this.basis;
 	var N = this.matrix;
-	var height = this.nextBasisIndex;
-	var i, j, k;
-
-	var L = new Array(height);
-	var U = new Array(height);
-	for (j = 0; j < height; j++) {
-		L[j] = new Array(height);
-		U[j] = new Array(height);
+	var BHeight = this.nextBasisIndex;
+	for (var i = 0; i < BHeight; i++) {
+		B[rowIndex - 1][i] /= factor;
+	}
+	var NWidth = this.width;
+	for (i = 0; i < NWidth; i++) {
+		N[rowIndex][i] /= factor;
 	}
 
-	for (var nbAttempts = 0; nbAttempts < height; nbAttempts++) {
-
-		for (j = 0; j < height; j++) {
-			L[j].fill(0);
-			U[j].fill(0);
-		}
-
-		for (i = 0; i < height; i++) {
-			L[i][i] = 1;
-		}
-
-		for (i = 0; i < height; i++) {
-			var rowToSwapWith = -1;
-			for (j = i; j < height; j++) {
-				var UVal = B[j][i];
-				for (k = 0; k < i; k++) {
-					UVal = UVal - L[j][k] * U[k][i];
-				}
-				if (UVal !== 0) {
-					rowToSwapWith = j;
-					break;
-				}
-			}
-
-			if (rowToSwapWith === -1) {
-				// console.log("No possible swap in this configuration");
-				var iRow = B[i].slice();
-				for (j = i; j > 0; j--) {
-					for (k = 0; k < height; k++) {
-						B[j][k] = B[j - 1][k];
-					}
-				}
-				B[0] = iRow.slice();
-
-				iRow = N[i + 1].slice();
-				for (j = i + 1; j > 1; j--) {
-					for (k = 0; k < this.width; k++) {
-						N[j][k] = N[j - 1][k];
-					}
-				}
-				N[1] = iRow.slice();
-
-				var iVal = b[i];
-				for (j = i; j > 0; j--) {
-					b[j] = b[j - 1];
-				}
-				b[0] = iVal;
-
-				iVal = this.originalRHS[i];
-				for (j = i; j > 0; j--) {
-					this.originalRHS[j] = this.originalRHS[j - 1];
-				}
-				this.originalRHS[0] = iVal;
-				break;
-			}
-
-			if (rowToSwapWith !== i) {
-				// console.log("switch rows");
-				this.switchRows(i + 1, rowToSwapWith + 1, B, b);
-				break;
-			}
-
-			for (j = i; j < height; j++) {
-				U[i][j] = B[i][j];
-				for (k = 0; k < i; k++) {
-					U[i][j] = U[i][j] - L[i][k] * U[k][j];
-				}
-			}
-
-			for (j = i + 1; j < height; j++) {
-				L[j][i] = B[j][i];
-				for (var l = 0; l < i; l++) {
-					L[j][i] = L[j][i] - L[j][l] * U[l][i];
-				}
-				L[j][i] = L[j][i] / U[i][i];
-			}
-
-			if (i === height - 1) {
-				return [L, U];
-			}
-		}
-	}
+	this.originalRHS[rowIndex - 1] /= factor;
+	// this.currentRHS[rowIndex - 1] /= factor;
 };
 
+Tableau.prototype.multiplyRowByFactor = function (rowIndex, factor) {
+	if (factor === 0) {
+		throw new Error("Multiplying by zero");
+	}
+	var B = this.basis;
+	var N = this.matrix;
+	var BHeight = this.nextBasisIndex;
+	for (var i = 0; i < BHeight; i++) {
+		B[rowIndex - 1][i] *= factor;
+	}
+	var NWidth = this.width;
+	for (i = 0; i < NWidth; i++) {
+		N[rowIndex][i] *= factor;
+	}
 
+	this.originalRHS[rowIndex - 1] *= factor;
+	// this.currentRHS[rowIndex - 1] *= factor;
+};
+
+Tableau.prototype.decompose2 = function (B, b) {
+	var height = this.nextBasisIndex;
+	var i, j, k;
+	var LU = new Array(height);
+	for (i = 0; i < height; i++) {
+		LU[i] = B[i].slice();
+	}
+	// Rook pivoting algorithm
+	// for each diagonal element
+	for (i = 0; i < height - 1; i++) {
+		var biggerValueExists = true;
+		var biggestValueCol = i;
+		var biggestValueRow = i;
+		// for each element of the sub matrix of B from i to height
+		while (biggerValueExists) {
+			biggerValueExists = false;
+			// search in current best column the best row
+			for (j = i; j < height; j++) {
+				if (Math.abs(LU[j][biggestValueCol]) > Math.abs(LU[biggestValueRow][biggestValueCol])) {
+					biggestValueRow = j;
+				}
+			}
+			// search in current best row the best column
+			for (j = i; j < height; j++) {
+				if (Math.abs(LU[biggestValueRow][j] > Math.abs(LU[biggestValueRow][biggestValueCol]))) {
+					biggestValueCol = j;
+					biggerValueExists = true;
+				}
+			}
+		}
+
+
+		var tmp;
+		// Now that we found the best element to pivot on, let's pivot
+		this.switchRows(i + 1, biggestValueRow + 1);
+		if (i !== biggestValueRow) {
+			// tmp = b[i];
+			// b[i] = b[biggestValueRow];
+			// b[biggestValueRow] = tmp;
+			for (j = 0; j < height; j++) {
+				tmp = LU[biggestValueRow][j];
+				LU[biggestValueRow][j] = LU[i][j];
+				LU[i][j] = tmp;
+			}
+		}
+		this.switchBasicColumns(i + 1, biggestValueCol + 1);
+		if (i !== biggestValueCol) {
+			tmp = b[i];
+			b[i] = b[biggestValueCol];
+			b[biggestValueCol] = tmp;
+			for (j = 0; j < height; j++) {
+				tmp = LU[j][biggestValueCol];
+				LU[j][biggestValueCol] = LU[j][i];
+				LU[j][i] = tmp;
+			}
+		}
+
+		// Update the LU matrix as to get the 0s of the Gaussian Elimination in the column i below the diagonal "of U"
+		for (j = i + 1; j < height; j++) {
+			if (LU[j][i] !== 0) {
+				var factor = LU[j][i] / LU[i][i];
+				LU[j][i] = factor;
+				for (k = i + 1; k < height; k++) {
+					LU[j][k] -= factor * LU[i][k];
+				}
+			}
+		}
+	}
+
+	// TODO: change the rest of the code where L and U are still used as separate matrices
+	var dummyRow = new Array(height).fill(0);
+	var L = new Array(height);
+	for (i = 0; i < height; i++) {
+		L[i] = dummyRow.slice();
+		for (j = 0; j < i; j++) {
+			L[i][j] = LU[i][j];
+			// LU is used as U
+			LU[i][j] = 0;
+		}
+		L[i][i] = 1;
+	}
+
+	return [L, LU];
+}
 
 // From https://en.wikipedia.org/wiki/Triangular_matrix#Algorithm
 Tableau.prototype.LUEvaluate = function (L, U, b) {
@@ -312,7 +337,9 @@ Tableau.prototype.updateLU = function (B, L, U, b, invLXa_q, pivotIndex) {
 	// TODO : instead of recomputing LU every time, update them
 	// recompute LU
 	// TODO : instead of PLU, put it straight into L and U
+	// console.log("HERE BEFORE", JSON.stringify(b));
 	var PLU = this.decompose2(B, b);
+	// console.log("HERE AFTER", JSON.stringify(b));
 
 	var newMat;
 	newMat = PLU[1];
@@ -348,6 +375,9 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 	var LU = this.decompose2(B, b);
 	var LU_T = this.decompose(transposeMatrix(B));
 
+	this.LU = LU;
+	this.LU_T = LU_T;
+
 	var cN = N[0].slice(1);
 
 	var updated_b = this.LUEvaluate(LU[0], LU[1], b)[0];
@@ -360,13 +390,22 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 	var precision = this.precision;
     var iterations = 0;
 
+	// this.displayTableau();
+	// console.log("real matrix", JSON.stringify(this.LUEvaluateMatrix(LU[0], LU[1])));
+
     while (true) {
 		console.log("ITERATION PHASE 1", iterations);
+		// console.log("rowByVarIndex", JSON.stringify(this.rowByVarIndex));
+		// console.log("varIndexByRow", JSON.stringify(this.varIndexByRow));
+		// console.log("unrestricted", JSON.stringify(this.unrestrictedVars));
+
+		// console.log("LU[0]", JSON.stringify(LU[0]));
+		// console.log("LU[1]", JSON.stringify(LU[1]));
+		// console.log("B", JSON.stringify(B));
 		var debugLog = false;
 		// this.displayTableau();
 		// this.debugLog(function () { console.log("updated b", JSON.stringify(updated_b)); }, debugLog);
 		// console.log("reverse b ?", this.reverseLUEvaluate(LU[0], LU[1], updated_b));
-
 
 		// Selecting leaving variable (feasibility condition):
 		// Basic variable with most negative value
@@ -406,7 +445,7 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 		}
 		for (i = 0; i < tmpVect.length; i++) {
 			for (var j = 0; j < this.height - 1; j++) {
-				tmpVect[i] += u[j]*N[j + 1][i + 1];
+				tmpVect[i] += u[j] * N[j + 1][i + 1];
 			}
 		}
 		// console.log("uUu", JSON.stringify(u));
@@ -426,6 +465,8 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 		var leavingRow = this.LUEvaluateRow(LU[0], LU[1], N, leavingRowIndex);
 		// this.debugLog(function () { console.log("leaving row", leavingRowIndex, JSON.stringify(leavingRow)); }, debugLog);
 		// this.debugLog(function () { console.log("updated_cN", JSON.stringify(updated_cN)); }, debugLog);
+
+		// console.log("leavingRow", JSON.stringify(leavingRow));
 
 
 		for (var c = 1; c <= lastColumn; c++) {
@@ -451,6 +492,8 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 		// console.log("aq", aq);
 		var aqInfo = this.LUEvaluate(LU[0], LU[1], aq);
 
+		// console.log("entering column", JSON.stringify(aqInfo[0]));
+
 		if (enteringColumn === 0) {
 			// Not feasible
 			this.feasible = false;
@@ -469,6 +512,8 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 			}
 		}
 
+		// console.log("b", JSON.stringify(updated_b));
+
 		rhsValue = updated_b[leavingRowIndex - 1];
 		var colValue = aqInfo[0][leavingRowIndex - 1];
 
@@ -476,8 +521,22 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 		// this.debugLog(function () { console.log("updated aq", enteringColumn, JSON.stringify(aqInfo[0])); }, debugLog);
 		var minRatio = rhsValue / colValue;
 
+		// if (iterations === 3) {
+		// 	this.switchBasicColumns(14, 16);
+		// } else if (iterations === 4) {
+		// 	this.switchRows(14, 16);
+		// }
+
+		console.log(leavingRowIndex, enteringColumn);
 		this.revisedPivot(leavingRowIndex - 1, enteringColumn - 1, updated_b, cN, LU, LU_T, aqInfo, originalZ, minRatio);
 		iterations += 1;
+
+		// this.displayTableau();
+		// console.log("real matrix", JSON.stringify(this.LUEvaluateMatrix(LU[0], LU[1])));
+		// console.log("b after pivot", JSON.stringify(updated_b));
+		// console.log("LU[0]", JSON.stringify(LU[0]));
+		// console.log("LU[1]", JSON.stringify(LU[1]));
+		// console.log("B", JSON.stringify(B));
 	}
 };
 
@@ -508,6 +567,9 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 	var LU = this.decompose2(B, b);
 	var LU_T = this.decompose(transposeMatrix(B));
 
+	this.LU = LU;
+	this.LU_T = LU_T;
+
 	var cN = N[0].slice(1);
 
 	var updated_b = this.LUEvaluate(LU[0], LU[1], b)[0];
@@ -516,9 +578,13 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 	var reducedCost, unrestricted;
 
 	console.log("START");
+	// this.displayTableau();
 
 	while(true) {
 		console.log("ITERATION PHASE 2", iter);
+		// console.log("rowByVarIndex", JSON.stringify(this.rowByVarIndex));
+		// console.log("varIndexByRow", JSON.stringify(this.varIndexByRow));
+		// console.log("unrestricted", JSON.stringify(this.unrestrictedVars));
 		var debugLog = false;
 		// if (debugLog) {
 		// this.displayMatrix(this.LUEvaluateMatrix(LU[0], LU[1]), "MATRIX");
@@ -529,10 +595,13 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 			optionalCostsColumns = [];
 		}
 
-
 		// this.displayMatrix(LU[0], "LU[0]");
 		// this.displayMatrix(LU[1], "LU[1]");
 		// this.displayMatrix(B, "B");
+
+		// console.log("LU[0]", JSON.stringify(LU[0]));
+		// console.log("LU[1]", JSON.stringify(LU[1]));
+		// console.log("B", JSON.stringify(B));
 
 		var u = this.LUEvaluate(LU_T[0], LU_T[1], cB)[0];
 
@@ -543,7 +612,7 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 		}
 		for (i = 0; i < tmpVect.length; i++) {
 			for (j = 0; j < u.length; j++) {
-				tmpVect[i] += u[j]*N[j + 1][i + 1];
+				tmpVect[i] += u[j] * N[j + 1][i + 1];
 			}
 		}
 		for (var rc = 0; rc < this.width - 1; rc++) {
@@ -594,13 +663,13 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 					}
 					for (i = 0; i < tmpVect.length; i++) {
 						for (j = 0; j < uOptional.length; j++) {
-							tmpVect[i] += uOptional[j]*N[j + 1][i + 1];
+							tmpVect[i] += uOptional[j] * N[j + 1][i + 1];
 						}
 					}
 					for (rc = 0; rc < this.width - 1; rc++) {
 						tmp_cN[rc] -= tmpVect[rc];
 					}
-					console.log("optional", k, [this.optionalObjectives[k].reducedCosts[0]], tmp_cN);
+					// console.log("optional", k, [this.optionalObjectives[k].reducedCosts[0]], tmp_cN);
 				}
 			}
 
@@ -615,7 +684,7 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 				}
 				for (i = 0; i < tmpVect.length; i++) {
 					for (j = 0; j < uOptional.length; j++) {
-						tmpVect[i] += uOptional[j]*N[j + 1][i + 1];
+						tmpVect[i] += uOptional[j] * N[j + 1][i + 1];
 					}
 				}
 				for (rc = 0; rc < this.width - 1; rc++) {
@@ -661,6 +730,8 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 		}
 
 		if (enteringColumn ===  -1) {
+			// console.log(JSON.stringify(this.varIndexByRow));
+			// console.log(JSON.stringify(this.rowByVarIndex));
 			for (i = 1; i < this.height; i++) {
 				N[i][0] = updated_b[i - 1];
 			}
@@ -731,11 +802,17 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 			}
 		}
 
-		// console.log("leavingRow", leavingRow);
-		// console.log("enteringColumn", enteringColumn);
+		console.log(leavingRow + 1, enteringColumn + 1);
 		this.revisedPivot(leavingRow, enteringColumn, updated_b, cN, LU, LU_T, aqInfo, originalZ, minQuotient);
 
 		iter++;
+
+		// this.displayTableau();
+		// console.log("real matrix", JSON.stringify(this.LUEvaluateMatrix(LU[0], LU[1])));
+		// console.log("b after pivot", JSON.stringify(updated_b));
+		// console.log("LU[0]", JSON.stringify(LU[0]));
+		// console.log("LU[1]", JSON.stringify(LU[1]));
+		// console.log("B", JSON.stringify(B));
 
 		// this.displayTableau();
 
@@ -766,12 +843,13 @@ Tableau.prototype.revisedPivot = function (leavingRow, enteringColumn, b, cN, LU
 	var size = this.nextBasisIndex;
 
 	for (r = 0; r < b.length; r++) {
-		// console.log("HERE b_"+r, b[r]);
+		// console.log("HERE b_"+r+" =", b[r], "-", minQuotient, "*", updated_aq[r], "===");
 		b[r] -= minQuotient * updated_aq[r];
+		// console.log(b[r]);
 		N[r + 1][0] = b[r];
 		// console.log("HERE diff_"+r, minQuotient * updated_aq[r]);
 	}
-	// console.log("HERE minQuotient", minQuotient);
+	// console.log("HERE b_"+leavingRow+" =", minQuotient);
 	b[leavingRow] = minQuotient;
 	N[leavingRow + 1][0] = b[leavingRow];
 
@@ -811,6 +889,24 @@ Tableau.prototype.revisedPivot = function (leavingRow, enteringColumn, b, cN, LU
 		}
 	}
 
+	var z = 0;
+	for (i = 0; i < size; i++) {
+		z += b[i] * cB[i];
+	}
+	N[0][0] = -(z - originalZ);
+
+	if (cBOptionals) {
+		for (i = 0; i < cBOptionals.length; i++) {
+			z = 0;
+			var optionalCB = cBOptionals[i];
+			var optionalCN = this.optionalObjectives[i].reducedCosts;
+			for (j = 0; j < size; j++) {
+				z += b[j] * optionalCB[j];
+			}
+			optionalCN[0] = -z;
+		}
+	}
+
 	this.updateLU(B, LU[0], LU[1], b, invLXa_q, leavingRow);
 	var tmpM = this.decompose(transposeMatrix(B));
 
@@ -827,22 +923,6 @@ Tableau.prototype.revisedPivot = function (leavingRow, enteringColumn, b, cN, LU
 		for (j = 0; j < size; j++) {
 			LU_T[1][i][j] = newMat[i][j];
 		}
-	}
-
-	var z = 0;
-	for (i = 0; i < size; i++) {
-		z += b[i] * cB[i];
-	}
-	N[0][0] = -(z - originalZ);
-
-	for (i = 0; i < cBOptionals.length; i++) {
-		z = 0;
-		var optionalCB = cBOptionals[i];
-		var optionalCN = this.optionalObjectives[i].reducedCosts;
-		for (j = 0; j < size; j++) {
-			z += b[j] * optionalCB[j];
-		}
-		optionalCN[0] = -z;
 	}
 };
 
@@ -1002,34 +1082,93 @@ Tableau.prototype._exchangeBasicVariables = function (row1, row2) {
 	this.originalRHS[row2 - 1] = tmp;
 };
 
-Tableau.prototype.switchRows = function (row1, row2, B, b) {
-	var i, tmp;
-	var N = this.matrix;
-	for (i = 0; i < this.height - 1; i++) {
-		tmp = B[row1 - 1][i];
-		B[row1 - 1][i] = B[row2 - 1][i];
-		B[row2 - 1][i] = tmp;
+
+Tableau.prototype.switchRows = function (row1, row2) {
+	if (row1 !== row2) {
+		// console.log("before switching rows", JSON.stringify(this.LUEvaluateMatrix(this.LU[0], this.LU[1])));
+		// console.log("switching rows !", row1, row2);
+		var i, tmp;
+		var N = this.matrix;
+		var B = this.basis;
+		for (i = 0; i < this.height - 1; i++) {
+			tmp = B[row1 - 1][i];
+			B[row1 - 1][i] = B[row2 - 1][i];
+			B[row2 - 1][i] = tmp;
+		}
+		// for (i = 0; i < this.height - 1; i++) {
+		// 	tmp = B[i][row1 - 1];
+		// 	B[i][row1 - 1] = B[i][row2 - 1];
+		// 	B[i][row2 - 1] = tmp;
+		// }
+		for (i = 0; i < this.width; i++) {
+			tmp = N[row1][i];
+			N[row1][i] = N[row2][i];
+			N[row2][i] = tmp;
+		}
+
+		var basicIndex1 = this.varIndexByRow[row1];
+		var basicIndex2 = this.varIndexByRow[row2];
+
+		// this.varIndexByRow[row1] = basicIndex2;
+		// this.varIndexByRow[row2] = basicIndex1;
+		//
+		// this.rowByVarIndex[basicIndex1] = row2;
+		// this.rowByVarIndex[basicIndex2] = row1;
+		//
+		// tmp = this.variablesPerIndex[row1 - 1];
+		// this.variablesPerIndex[row1 - 1] = this.variablesPerIndex[row2 - 1];
+		// this.variablesPerIndex[row2 - 1] = tmp;
+
+		tmp = this.originalRHS[row1 - 1];
+		this.originalRHS[row1 - 1] = this.originalRHS[row2 - 1];
+		this.originalRHS[row2 - 1] = tmp;
 	}
-	for (i = 0; i < this.width; i++) {
-		tmp = N[row1][i];
-		N[row1][i] = N[row2][i];
-		N[row2][i] = tmp;
-	}
-
-	var basicIndex1 = this.varIndexByRow[row1];
-	var basicIndex2 = this.varIndexByRow[row2];
-
-	// this.varIndexByRow[row1] = basicIndex2;
-	// this.varIndexByRow[row2] = basicIndex1;
-	//
-	// this.rowByVarIndex[basicIndex1] = row2;
-	// this.rowByVarIndex[basicIndex2] = row1;
-
-	tmp = this.originalRHS[row1 - 1];
-	this.originalRHS[row1 - 1] = this.originalRHS[row2 - 1];
-	this.originalRHS[row2 - 1] = tmp;
-
-	// tmp = b[row1 - 1];
-	// b[row1 - 1] = b[row2 - 1];
-	// b[row2 - 1] = tmp;
 };
+
+Tableau.prototype.switchBasicColumns = function (col1, col2) {
+	if (col1 !== col2) {
+		// console.log("switching columns !", col1, col2);
+		var tmp;
+
+		// switching in basis
+		var B = this.basis;
+		for (var i = 0; i < this.nextBasisIndex; i++) {
+			tmp = B[i][col1 - 1];
+			B[i][col1 - 1] = B[i][col2 - 1];
+			B[i][col2 - 1] = tmp;
+		}
+
+		// switching in main basis objective
+		tmp = this.basisCosts[col1 - 1];
+		this.basisCosts[col1 - 1] = this.basisCosts[col2 - 1];
+		this.basisCosts[col2 - 1] = tmp;
+
+		// switching in optional basis objectives
+		if (this.basisOptionalCosts) {
+			for (var i = 0; i < this.basisOptionalCosts.length; i++) {
+				tmp = this.basisOptionalCosts[i][col1 - 1];
+				this.basisOptionalCosts[i][col1 - 1] = this.basisOptionalCosts[i][col2 - 1];
+				this.basisOptionalCosts[i][col2 - 1] = tmp;
+			}
+		}
+
+
+
+		var basicIndex1 = this.varIndexByRow[col1];
+		var basicIndex2 = this.varIndexByRow[col2];
+
+		this.varIndexByRow[col1] = basicIndex2;
+		this.varIndexByRow[col2] = basicIndex1;
+
+		this.rowByVarIndex[basicIndex1] = col2;
+		this.rowByVarIndex[basicIndex2] = col1;
+
+		tmp = this.variablesPerIndex[col1 - 1];
+		this.variablesPerIndex[col1 - 1] = this.variablesPerIndex[col2 - 1];
+		this.variablesPerIndex[col2 - 1] = tmp;
+
+		// tmp = this.originalRHS[col1 - 1];
+		// this.originalRHS[col1 - 1] = this.originalRHS[col2 - 1];
+		// this.originalRHS[col2 - 1] = tmp;
+	}
+}

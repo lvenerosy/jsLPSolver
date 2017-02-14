@@ -80,9 +80,11 @@ Model.prototype._addConstraint = function (constraint) {
     this.tableau.variablesPerIndex[slackVariable.index] = slackVariable;
     this.constraints.push(constraint);
     this.nConstraints += 1;
+
     if (this.tableauInitialized === true) {
         this.tableau.addConstraint(constraint);
     }
+
     if(this.useRevisedSimplex){
         var basis = this.tableau.basis;
         var nextBasisIndex = this.tableau.nextBasisIndex;

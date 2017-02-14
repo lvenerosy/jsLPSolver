@@ -73,28 +73,30 @@ var Solver = function () {
         }
 
         if (model instanceof Model === false) {
-            model = new Model(precision).loadJson(model);
-        }
+            var m = new Model(precision);
 
-        if (typeof activateRevisedSimplex === "undefined") {
-            model.activateRevisedSimplex(false);
-        }
-        else {
-            model.activateRevisedSimplex(activateRevisedSimplex);
-        }
+            if (typeof activateRevisedSimplex === "undefined") {
+                m.activateRevisedSimplex(false);
+            }
+            else {
+                m.activateRevisedSimplex(activateRevisedSimplex);
+            }
 
-        if (typeof activateMIRCuts === "undefined") {
-            model.activateMIRCuts(false);
-        }
-        else {
-            model.activateMIRCuts(activateMIRCuts);
-        }
+            if (typeof activateMIRCuts === "undefined") {
+                m.activateMIRCuts(false);
+            }
+            else {
+                m.activateMIRCuts(activateMIRCuts);
+            }
 
-        if (typeof debug === "undefined") {
-            model.debug(false);
-        }
-        else {
-            model.debug(debug);
+            if (typeof debug === "undefined") {
+                m.debug(false);
+            }
+            else {
+                m.debug(debug);
+            }
+
+            model = m.loadJson(model);
         }
 
         var solution = model.solve();

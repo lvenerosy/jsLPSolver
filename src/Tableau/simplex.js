@@ -72,8 +72,14 @@ Tableau.prototype.phase1 = function () {
 
     var unrestricted;
     var iterations = 0;
+
+    // console.log("matrix", JSON.stringify(this.matrix));
+
     while (true) {
-        // console.log("PHASE 1 ITERATION :", iterations);
+        console.log("PHASE 1 ITERATION :", iterations);
+        // console.log("rowByVarIndex", JSON.stringify(this.rowByVarIndex));
+		// console.log("varIndexByRow", JSON.stringify(this.varIndexByRow));
+		// console.log("unrestricted", JSON.stringify(this.unrestrictedVars));
         var debugLog = false;
         // if (iterations === 0) {
         //     this.displayTableau();
@@ -157,8 +163,11 @@ Tableau.prototype.phase1 = function () {
         // this.debugLog(function () { console.log("HERE b", tmpcol); }, debugLog);
 
 
+        console.log(leavingRowIndex, enteringColumn);
         this.pivot(leavingRowIndex, enteringColumn);
         iterations += 1;
+
+        // console.log("matrix", JSON.stringify(this.matrix));
 
         // this.displayTableau();
 
@@ -189,7 +198,7 @@ Tableau.prototype.phase2 = function () {
     var iterations = 0;
     var reducedCost, unrestricted;
     while (true) {
-        // console.log("PHASE 2 ITERATION :", iterations);
+        console.log("PHASE 2 ITERATION :", iterations);
         var debugLog = false;
 
         var costRow = matrix[this.costRowIndex];
@@ -345,9 +354,11 @@ Tableau.prototype.phase2 = function () {
             }
         }
 
+        console.log(leavingRow, enteringColumn);
         this.pivot(leavingRow, enteringColumn, true);
         iterations += 1;
 
+        // console.log("matrix", JSON.stringify(this.matrix));
         // this.displayTableau();
     }
 };
