@@ -65,6 +65,9 @@ function Tableau(precision) {
     this.basisOptionalCosts = null;
     this.originalRHS = [];
     this.originalZ = 0;
+    this.tmpL = new Array(0);
+    this.tmpU = new Array(0);
+
 
     // get rid of it (in simplex)
     this.tmpIter = 0;

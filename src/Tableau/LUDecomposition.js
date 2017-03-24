@@ -13,17 +13,20 @@ var Tableau = require("./Tableau.js");
 Tableau.prototype.decompose = function (B) {
 	var height = this.nextBasisIndex;
 
-	var tmpRow = new Array(height);
-	for (var i = 0; i < height; i++) {
-		tmpRow[i] = 0;
-	}
+	// var tmpRow = new Array(height);
+	// for (var i = 0; i < height; i++) {
+	// 	tmpRow[i] = 0;
+	// }
+	//
+	// var L = new Array(height);
+	// var U = new Array(height);
+	// for (var j = 0; j < height; j++) {
+	// 	L[j] = tmpRow.slice();
+	// 	U[j] = tmpRow.slice();
+	// }
 
-	var L = new Array(height);
-	var U = new Array(height);
-	for (var j = 0; j < height; j++) {
-		L[j] = tmpRow.slice();
-		U[j] = tmpRow.slice();
-	}
+	var L = this.tmpL;
+	var U = this.tmpU;
 
 	for (i = 0; i < height; i++) {
 		L[i][i] = 1;
@@ -180,25 +183,39 @@ Tableau.prototype.LUEvaluate = function (L, U, b) {
 	var x = new Array(n);
 	var y = new Array(n);
 
+	console.log("new evaluate true", JSON.stringify(b));
 	// Forward solve Ly = b
+	var ROW = 0;
 	for (i = 0; i < n; i++) {
 		y[i] = b[i];
+		console.log("y", y[i]);
 		for (j = 0; j < i; j++) {
+			console.log("yy", JSON.stringify(y));
 			y[i] -= L[i][j] * y[j];
+			console.log("tmpy", y[i], "; y -=", L[i][j], "*", y[j]);
 		}
 		y[i] /= L[i][i];
+		console.log("tmpy", y[i], "; y /=", L[i][i]);
 	}
+	console.log("debug y", JSON.stringify(y));
+	// throw true;
 
 	var invLXa_q = y.slice();
 
 	// Backward solve Ux = y
 	for (i = n - 1; i >= 0; i--) {
 		x[i] = y[i];
+		console.log("x", x[i]);
 		for (j = i + 1; j < n; j++) {
+			console.log("xx", JSON.stringify(x));
 			x[i] -= U[i][j] * x[j];
+			console.log("tmpx", x[i], "; x -=", U[i][j], "*", x[j]);
 		}
 		x[i] /= U[i][i];
+		console.log("tmpx", x[i], "; x /=", U[i][i]);
 	}
+	console.log("debug x", JSON.stringify(x));
+
 	return [x, invLXa_q];
 };
 
@@ -228,12 +245,159 @@ Tableau.prototype.reverseLUEvaluate = function (L, U, b) {
 	return y;
 };
 
+Tableau.prototype.LUEvaluateBis = function (L, U, N, row, col) {
+	var j = 0;
+	var n = this.nextBasisIndex;
+	var x;
+	var y;
+
+	y = N[row + 1][col + 1];
+	console.log("y", y);
+	for (j = 0; j < row; j++) {
+		y -= L[row][j] * N[j + 1][col + 1];
+		console.log("tmpy", y, "; y -=", L[row][j], "*", N[j + 1][col + 1]);
+	}
+	y /= L[row][row];
+	console.log("tmpy", y, "; y /=", L[row][row]);
+
+	x = y;
+	for (j = row + 1; j < n; j++) {
+		x -= U[row][j] * N[j + 1][col + 1];
+		console.log("tmpx", x, "; x -=", U[row][j], "*", N[j + 1][col + 1]);
+	}
+	x /= U[row][row];
+	console.log("tmpx", x, "; x /=", U[row][row]);
+
+	return x;
+};
+
+// http://best.eng.buffalo.edu/Research/Lecture%20Series%202013/General%20Linear%20Systems.pdf
+Tableau.prototype.LUEvaluateBis2 = function (L, U, N, row) {
+	var n = this.width - 1;
+	var i, j;
+
+	console.log("row 0 =", row[0], "/", L[0][0]);
+	row[0] = row[0] / L[0][0];
+	console.log("=", row[0]);
+	for (i = 1; i < n; i++) {
+		for (j = 0; j < i; j++) {
+			console.log("row", i, "=", "(", row[i], "-", L[i][j], "*", row[j], ")", "/", L[i][i]);
+			// row[i] = (row[i] - L[i][j] * row[j]) / L[i][i];
+			row[i] -= L[i][j] * row[j];
+			console.log("=", row[i]);
+		}
+		row[i] /= L[i][i];
+	}
+
+	console.log("debug y", JSON.stringify(row));
+
+	console.log("row", n-1, "=", row[n - 1], "/", U[n - 1][n - 1]);
+	row[n - 1] = row[n - 1] / U[n - 1][n - 1];
+	console.log(row[n - 1]);
+	for (i = n - 2; i >= 0; i--) {
+		for (j = i + 1; j < n; j++) {
+			console.log("row", i, "=", "(", row[i], "-", U[i][j], "*", row[j], ")", "/", U[i][i]);
+			// row[i] = (row[i] - U[i][j] * row[j]) / U[i][i];
+			row[i] -= U[i][j] * row[j];
+			console.log("=", row[i]);
+		}
+		row[i] /= U[i][i];
+	}
+
+	// x[i] = y[i];
+	// for (j = i + 1; j < n; j++) {
+	// 	x[i] -= U[i][j] * x[j];
+	// }
+	// x[i] /= U[i][i];
+
+	return row;
+};
+
+Tableau.prototype.LUEvaluateBis3 = function (L, U, N, row, index) {
+	var n = this.width - 1;
+	var i, j;
+
+	console.log("index", index);
+	console.log("the row", row);
+	console.log("row 0 =", row[0], "/", L[0][0]);
+	console.log("=", row[0]);
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < i; j++) {
+			console.log("row", i, "=", "(", row[i], "-", L[i][j], "*", row[j], ")");
+			row[i] -= L[i][j] * row[j];
+			console.log("=", row[i]);
+
+			// console.log("row", i, "=", "(", row[i], "-", L[j][i], "*", row[j], ")");
+			// row[i] -= L[j][i] * row[j];
+			// console.log("=", row[i]);
+		}
+		console.log("row", i, "/=", L[i][i]);
+		row[i] /= L[i][i];
+		console.log("=", row[i]);
+
+		// console.log("row", i, "/=", L[index][index]);
+		// row[i] /= L[index][index];
+		// console.log("=", row[i]);
+	}
+
+	console.log("debug y", JSON.stringify(row));
+
+	console.log("row", n-1, "=", row[n - 1], "/", U[n - 1][n - 1]);
+	console.log(row[n - 1]);
+	for (i = n - 1; i >= 0; i--) {
+		for (j = i + 1; j < n; j++) {
+			// console.log("row", i, "=", "(", row[i], "-", U[i][j], "*", row[j], ")");
+			// row[i] -= U[i][j] * row[j];
+			// console.log("=", row[i]);
+
+			console.log("row", i, "=", "(", row[i], "-", U[j][i], "*", row[j], ")");
+			row[i] -= U[j][i] * row[j];
+			console.log("=", row[i]);
+		}
+		// console.log("row", i, "/=", U[i][i]);
+		// row[i] /= U[i][i];
+		// console.log("=", row[i]);
+
+		console.log("row", i, "/=", U[index][index]);
+		row[i] /= U[index][index];
+		console.log("=", row[i]);
+	}
+
+	return row;
+};
+
+Tableau.prototype.yay = function (L, U, N, row) {
+	var width = this.width - 1;
+	var result = new Array(width);
+
+	for (var i = 0; i < width; i++) {
+		for (var j = 0; j < i; j++) {
+			row[i] -= L[i][j] * result[j];
+		}
+		result[i] = row[i] / L[i][i];
+	}
+
+	for (var i = width - 1; i >= 0; i--) {
+		for (var j = i + 1; j < width; j++) {
+			row[i] -= U[i][j] * result[j];
+		}
+		result[i] = row[i] / U[i][i];
+	}
+
+	return result;
+};
 
 Tableau.prototype.LUEvaluateRow = function (L, U, N, r) {
 	var height = this.height - 1;
 	var width = this.width - 1;
 	var col = new Array(height);
 	var row = new Array(width);
+
+	console.log(this.displayMatrix(this.basis, "B"));
+	console.log(this.displayMatrix(L, "L"));
+	console.log(this.displayMatrix(U, "U"));
+	console.log(this.displayMatrix(N, "N"));
+	// console.log(this.displayMatrix(this.LUEvaluateMatrix(L, U), "evaluated N"));
 
 	for (var i = 0; i < width; i++) {
 		for (var j = 0; j < height; j++) {
@@ -242,7 +406,35 @@ Tableau.prototype.LUEvaluateRow = function (L, U, N, r) {
 		row[i] = this.LUEvaluate(L, U, col)[0][r - 1];
 	}
 
+	console.log("\n");
+	console.log("TRUE ROW", JSON.stringify(row));
+
+	// var tmpRow = [];
+	// for (var i = 0; i < width; i++) {
+	// 	tmpRow.push(this.LUEvaluateBis(L, U, N, r - 1, i));
+	// }
+	// console.log("\n");
+	// console.log("GOOD ?", JSON.stringify(tmpRow));
+
+
+
+
+	console.log("\n");
+	console.log("NEW ONE");
+	var rowww = this.LUEvaluateBis3(L, U, N, N[r].slice(1), r-1);
+	console.log(JSON.stringify(rowww));
+
+	console.log("\n");
+	console.log("NEW new");
+	var yay = this.yay(L, U, N, N[r].slice(1));
+	console.log(JSON.stringify(yay));
+
+
+
+
+	console.log("\n\n\n\n\n");
 	return row;
+	// return rowww;
 };
 
 Tableau.prototype.LUEvaluateMatrix = function (L, U) {
@@ -357,7 +549,42 @@ Tableau.prototype.updateLU = function (B, L, U, b, invLXa_q, pivotIndex) {
 	}
 };
 
+Array.prototype.extend = function (otherArray) {
+	// should include a test to check whether otherArray really is an array ?
+	otherArray.forEach(function(v) {this.push(v)}, this);
+}
+
+Function.prototype.clone = function() {
+	var that = this;
+	var temp = function temporary() { return that.apply(this, arguments); };
+	for(var key in this) {
+		if (this.hasOwnProperty(key)) {
+			temp[key] = this[key];
+		}
+	}
+	return temp;
+};
+
 Tableau.prototype.LUSimplexPhase1 = function () {
+	// setup of the temporary L and U according to the characetristics of the problem/current branch
+	if (this.nextBasisIndex > this.tmpL.length) {
+		var nextBasisIndex = this.nextBasisIndex;
+		var originalLength = this.tmpL.length;
+		var tmpL = this.tmpL;
+		var tmpU = this.tmpU;
+		// TODO : fill not needed ?
+		var toAppend = new Array(nextBasisIndex - originalLength).fill(0);
+		for (i = originalLength; i < nextBasisIndex; i++) {
+			// TODO : fill not needed ?
+			tmpL.push(new Array(nextBasisIndex).fill(0));
+			tmpU.push(new Array(nextBasisIndex).fill(0));
+		}
+		for (var i = 0; i < originalLength; i++) {
+			tmpL[i].extend(toAppend);
+			tmpU[i].extend(toAppend);
+		}
+	}
+
     var debugCheckForCycles = this.model.checkForCycles;
     var varIndexesCycle = [];
 
@@ -372,6 +599,8 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 	var b = this.originalRHS.slice();
 	// console.log("HERE originalRHS", b);
 
+	this.savedLog = console.log.clone();
+	console.log = function() {}
 	var LU = this.decompose2(B, b);
 	var LU_T = this.decompose(transposeMatrix(B));
 
@@ -394,7 +623,15 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 	// console.log("real matrix", JSON.stringify(this.LUEvaluateMatrix(LU[0], LU[1])));
 
     while (true) {
+		console.log = this.savedLog.clone();
 		console.log("ITERATION PHASE 1", iterations);
+		console.log = function() {}
+
+
+		// if (iterations === 1) {
+		// 	throw true;
+		// }
+
 		// console.log("rowByVarIndex", JSON.stringify(this.rowByVarIndex));
 		// console.log("varIndexByRow", JSON.stringify(this.varIndexByRow));
 		// console.log("unrestricted", JSON.stringify(this.unrestrictedVars));
@@ -527,7 +764,10 @@ Tableau.prototype.LUSimplexPhase1 = function () {
 		// 	this.switchRows(14, 16);
 		// }
 
+		console.log = this.savedLog.clone();
 		console.log(leavingRowIndex, enteringColumn);
+		console.log = function() {}
+
 		this.revisedPivot(leavingRowIndex - 1, enteringColumn - 1, updated_b, cN, LU, LU_T, aqInfo, originalZ, minRatio);
 		iterations += 1;
 
@@ -581,7 +821,9 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 	// this.displayTableau();
 
 	while(true) {
+		console.log = this.savedLog.clone();
 		console.log("ITERATION PHASE 2", iter);
+		console.log = function() {}
 		// console.log("rowByVarIndex", JSON.stringify(this.rowByVarIndex));
 		// console.log("varIndexByRow", JSON.stringify(this.varIndexByRow));
 		// console.log("unrestricted", JSON.stringify(this.unrestrictedVars));
@@ -802,7 +1044,9 @@ Tableau.prototype.LUSimplexPhase2 = function () {
 			}
 		}
 
+		console.log = this.savedLog.clone();
 		console.log(leavingRow + 1, enteringColumn + 1);
+		console.log = function() {}
 		this.revisedPivot(leavingRow, enteringColumn, updated_b, cN, LU, LU_T, aqInfo, originalZ, minQuotient);
 
 		iter++;
